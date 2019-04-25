@@ -14,9 +14,12 @@
         not implmented (fgetattr(), etc). Those seeking a more efficient and
         more complete implementation may wish to add fi->fh support to minimize
         open() and close() calls and support fh dependent functions.
+	
+	gcc -Wall -pthread `pkg-config fuse --cflags` blabla.c -o output `pkg-config fuse --libs` 
 */
 
 #define FUSE_USE_VERSION 28
+#include <pthread.h>
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
@@ -42,6 +45,9 @@ FILE *fdir1;
 FILE *fdir2;
 FILE *inside;
 
+char buf[1024*1024*10];
+int flag = 1;
+pthread_t tid[5];
 /////
 // SOAL 1
 char *Caesar(char *fname, int mode)
@@ -99,13 +105,105 @@ void RecursiveRename(char *basePath, int mode)
 
     closedir(dir);
 }
+// SOAL 1
+/////
+
+
+/////
+// SOAL 2
+void* JoinVid(void* args)
+{
+    int fd, fdDest; 
+    char *matchName = (char*) args;
+    char dest[1000], destPath[1000];
+    sprintf(dest,"%s/Videos/", dirpath);
+    sprintf(destPath,"%s%s", dest, matchName);    
+    struct dirent *dp;
+    fdDest = open(destPath, O_CREAT |O_APPEND | O_RDWR, 0777); 
+    DIR *dir = opendir(dirpath);
+    
+    while ((dp = readdir(dir)) != NULL)
+    {
+        char *cmp;
+        if ((cmp = strstr(dp->d_name, matchName)) != NULL)
+        {
+            char curr[1000];
+            sprintf(curr,"%s/%s", dirpath, dp->d_name);
+            fd = open(curr, O_RDWR); 
+            write(fdDest, buf, read(fd, buf, sizeof(buf))); 
+
+        }
+    }      
+    close(fdDest); 
+  return (void*) 0;
+}
+
+void* CheckVid(void* args)
+{  
+    
+    char path[1000];
+    sprintf(path,"%s/Videos",dirpath);
+
+    while(flag)
+    {    
+        struct dirent *dp;
+        DIR *dir = opendir(dirpath);
+        int i = 0;
+        while ((dp = readdir(dir)) != NULL)
+        {
+            char *cmp;
+            struct stat buf;
+            if ((cmp = strstr(dp->d_name, ".000")) != NULL)
+            {
+                char curr[100], existVid[1000];
+                sprintf(curr,"%s",dp->d_name);
+                curr[strlen(dp->d_name) - 4] = '\0';
+                sprintf(existVid,"%s/%s",path, curr);
+                if((stat (existVid, &buf) == 0));
+                else
+                {
+                    pthread_create(&tid[i % 5 + 1], NULL, &JoinVid, (void*) curr);
+                    i++;
+                }
+                sleep(1);
+
+            }
+        }      
+    }
+    return (void*) 0;
+}
+
+void DelAll()
+{
+    flag = 0;
+    struct dirent *dp;
+    char path[1000];
+    sprintf(path,"%s/Videos",dirpath);
+    DIR *dir = opendir(path);
+    while ((dp = readdir(dir)) != NULL)
+    {
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
+        {
+            char curr[1000];
+            sprintf(curr,"%s/%s",path,dp->d_name);
+            remove(curr);
+        }
+    }
+    closedir(dir);
+    remove(path); 
+}
+// SOAL 2
+/////
+
 
 static void *xmp_init(struct fuse_conn_info *conn)
 {
 	(void) conn;
-  char path[1000]; 
-  sprintf(path,"%s", dirpath);
-  RecursiveRename(path, DEC);
+	char path[1000]; 
+	sprintf(path,"%s", dirpath);
+	RecursiveRename(path, DEC);
+	sprintf(vid,"%s/Videos",path);
+	mkdir(vid,0777);
 	return NULL;
 }
 void xmp_destroy(void *private_data)
@@ -113,11 +211,9 @@ void xmp_destroy(void *private_data)
   char path[1000];
   sprintf(path,"%s", dirpath);
   RecursiveRename(path, ENC);
-
+  DelAll();
 }
 
-// SOAL 1
-/////
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
