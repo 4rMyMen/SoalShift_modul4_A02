@@ -17,17 +17,6 @@
 */
 
 #define FUSE_USE_VERSION 28
-#define HAVE_SETXATTR
-
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#ifdef linux
-/* For pread()/pwrite() */
-#define _XOPEN_SOURCE 500
-#endif
-
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
