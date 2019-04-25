@@ -1,4 +1,33 @@
+/*
+  FUSE: Filesystem in Userspace
+  Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
+  Minor modifications and note by Andy Sayler (2012) <www.andysayler.com>
+  Source: fuse-2.8.7.tar.gz examples directory
+  http://sourceforge.net/projects/fuse/files/fuse-2.X/
+  This program can be distributed under the terms of the GNU GPL.
+  See the file COPYING.
+  gcc -Wall `pkg-config fuse --cflags` fusexmp.c -o fusexmp `pkg-config fuse --libs`
+  Note: This implementation is largely stateless and does not maintain
+        open file handels between open and release calls (fi->fh).
+        Instead, files are opened and closed as necessary inside read(), write(),
+        etc calls. As such, the functions that rely on maintaining file handles are
+        not implmented (fgetattr(), etc). Those seeking a more efficient and
+        more complete implementation may wish to add fi->fh support to minimize
+        open() and close() calls and support fh dependent functions.
+*/
+
 #define FUSE_USE_VERSION 28
+#define HAVE_SETXATTR
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef linux
+/* For pread()/pwrite() */
+#define _XOPEN_SOURCE 500
+#endif
+
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,8 +36,13 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <sys/stat.h> 
 #include <string.h>
 #include <sys/types.h>
+#define KEY 17
+#define DEC -1
+#define ENC 1
+char char_list[] = "qE1~ YMUR2\"`hNIdPzi%^t@(Ao:=CQ,nx4S[7mHFye#aT6+v)DfKL$r?bkOGB>}!9_wV']jcp5JZ&Xl|\\8s;g<{3.u*W-0";
 
 static const char *dirpath = "/home/paksi/Downloads";
 char old[1000];
@@ -18,6 +52,83 @@ char nama2[100];
 FILE *fdir1;
 FILE *fdir2;
 FILE *inside;
+
+/////
+// SOAL 1
+char *Caesar(char *fname, int mode)
+{
+
+    int i, n = strlen(fname);
+    for(i = 0; i < n; i++)
+    {
+        int j = 0;
+        while ((char_list[j] == fname[i]) == 0) j++;
+        j = (j + (KEY * mode) )% 94;
+        fname[i] = char_list[j];
+
+    }
+    puts(fname);
+    return fname;
+}
+
+void RecursiveRename(char *basePath, int mode)
+{
+    char path[1000];
+    struct dirent *dp;
+    DIR *dir = opendir(basePath);
+
+    if (!dir)
+        return;
+
+    while ((dp = readdir(dir)) != NULL)
+    {
+        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
+        {
+            
+            struct stat sb;
+            char curr[1000];
+            sprintf(curr,"%s/%s",basePath,dp->d_name);
+            char new[1000];
+            char *csr = Caesar(dp->d_name, mode);
+            sprintf(new,"%s/%s",basePath,csr);
+            if (stat(curr, &sb) == 0 && S_ISDIR(sb.st_mode))
+            {
+                sprintf(path,"%s",curr);
+                RecursiveRename(path,mode);
+                rename( path , new );
+
+            }
+            else
+            {
+                sprintf(path,"%s",curr);
+                rename( path, new );
+            }
+            
+ 
+        }
+    }
+
+    closedir(dir);
+}
+
+static void *xmp_init(struct fuse_conn_info *conn)
+{
+	(void) conn;
+  char path[1000]; 
+  sprintf(path,"%s", dirpath);
+  RecursiveRename(path, DEC);
+	return NULL;
+}
+void xmp_destroy(void *private_data)
+{
+  char path[1000];
+  sprintf(path,"%s", dirpath);
+  RecursiveRename(path, ENC);
+
+}
+
+// SOAL 1
+/////
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
@@ -184,6 +295,8 @@ static int xmp_truncate(const char *path, off_t size)
 
 
 static struct fuse_operations xmp_oper = {
+	.init		= xmp_init,
+	.destroy	= xmp_destroy,
 	.getattr	= xmp_getattr,
 	.readdir	= xmp_readdir,
 	.read		= xmp_read,
