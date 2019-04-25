@@ -79,7 +79,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
     }
 	else sprintf(fpath, "%s%s",dirpath,path);
 
-	fd1 = fopen (fpath, "r");
+	fdir1 = fopen (fpath, "r");
 	fgets(old, 1000, fdir1);
 
 	int res = 0;
@@ -153,10 +153,10 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 		int i=strlen(path2)-4;
 		if(path2[i]=='.')path2[i]='\0';
 
-	    sprintf(name1,"/home/paksi/Downloads%s",path);
-        sprintf(name2, "/home/paksi/Downloads/Backup%s_%s%s", path2, taimu, extention);
+	    sprintf(nama1,"/home/paksi/Downloads%s",path);
+        sprintf(nama2, "/home/paksi/Downloads/Backup%s_%s%s", path2, taimu, extention);
 
-		inside=fopen(name2,"w+");
+		inside=fopen(nama2,"w+");
 		fprintf(inside, "%s", update);
 		fclose(inside);
 	}
