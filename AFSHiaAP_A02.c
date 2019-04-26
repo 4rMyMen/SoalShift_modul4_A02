@@ -164,8 +164,6 @@ void* CheckVid(void* args)
         {
             char *cmp;
             struct stat buf;
-            char split[10];
-            sprintf(split,"%03d",VID_START);
             if ((cmp = strstr(dp->d_name, ".001")) != NULL)
             {
                 char curr[100], existVid[1000];
@@ -203,7 +201,6 @@ void DelAll()
         }
     }
     closedir(dir);
-    remove(path); 
 }
 // SOAL 2
 /////
@@ -284,7 +281,10 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		struct stat st;
         char newpath[1000];
         char out[1000];
-
+		    if (strstr(de->d_name,".mp4.") || strstr(de->d_name,".mov.") || strstr(de->d_name,".mkv.")  )
+    {
+      continue;
+    }
 		memset(&st, 0, sizeof(st));
 		st.st_ino = de->d_ino;
 		st.st_mode = de->d_type << 12;
