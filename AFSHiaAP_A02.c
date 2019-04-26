@@ -20,6 +20,14 @@
 */
 
 #define FUSE_USE_VERSION 28
+#define HAVE_SETXATTR
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+#ifdef linux
+/* For pread()/pwrite() */
+#define _XOPEN_SOURCE 500
+#endif
 #include <pthread.h>
 #include <fuse.h>
 #include <stdio.h>
@@ -28,6 +36,9 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
+#ifdef HAVE_SETXATTR
+#include <sys/xattr.h>
+#endif
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -40,13 +51,6 @@
 char char_list[] = "qE1~ YMUR2\"`hNIdPzi%^t@(Ao:=CQ,nx4S[7mHFye#aT6+v)DfKL$r?bkOGB>}!9_wV']jcp5JZ&Xl|\\8s;g<{3.u*W-0";
 
 static const char *dirpath = "/home/paksi/shift4";
-char old[1000];
-char update[1000];
-char nama1[100];
-char nama2[100];
-FILE *fdir1;
-FILE *fdir2;
-FILE *inside;
 
 char buf[1024*1024*10];
 int flag = 1;
@@ -239,7 +243,13 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 {
     int res;
 	char fpath[1000];
-	sprintf(fpath,"%s%s",dirpath,path);
+
+	if(strcmp(path,"/") == 0)
+	{
+		path=dirpath;
+		sprintf(fpath,"%s",path);
+	}
+	else sprintf(fpath, "%s%s",dirpath,path);
 
 	res = lstat(fpath, stbuf);
 	if (res == -1)
@@ -322,9 +332,6 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
     }
 	else sprintf(fpath, "%s%s",dirpath,path);
 
-	fdir1 = fopen (fpath, "r");
-	fgets(old, 1000, fdir1);
-
 	int res = 0;
  	int fd = 0 ;
 
@@ -336,15 +343,23 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 	res = pread(fd, buf, size, offset);
 	if (res == -1)
 		res = -errno;
-
-	fclose(fdir1);
 	close(fd);
 	return res;
 }
 
 static int xmp_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
-{
+{   
+    char fpath[1000];
+    char newpath[1000];
+    
+    if(strcmp(path,"/") == 0)
+	{
+		path=dirpath;
+		sprintf(fpath,"%s",path);
+	}
+	else sprintf(fpath, "%s%s",dirpath,path);
+
 	int fd;
 	int res;
 
@@ -358,6 +373,22 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 		res = -errno;
 
 	close(fd);
+
+    char *stress;
+	stress = strstr(fpath, "YOUTUBER");
+
+	if(stress)
+	{
+		pid_t stressbah;
+		stressbah=fork();
+		if(stressbah==0)
+		{
+			sprintf(newpath, "%s.iz1", fpath);
+			char *mov[]={"mv", fpath, newpath, NULL};
+			execv("/bin/mv", mov);
+		}
+	}
+
 	return res;
 }
 
@@ -375,18 +406,62 @@ static int xmp_unlink(const char *path)
 static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
 {
 	int res;
+    char fpath[1000];
+
+	if(strcmp(path,"/") == 0)
+	{
+		path=dirpath;
+		sprintf(fpath,"%s",path);
+	}
+	else sprintf(fpath, "%s%s",dirpath,path);
+
+    char *stress;
+	stress = strstr(fpath, "YOUTUBER");
+
+    if(stress)
+	{
+    	mode=33184;
+	}
 
 	if (S_ISREG(mode)) {
-		res = open(path, O_CREAT | O_EXCL | O_WRONLY, mode);
+		res = open(fpath, O_CREAT | O_EXCL | O_WRONLY, mode);
 		if (res >= 0)
 			res = close(res);
 	} else if (S_ISFIFO(mode))
-		res = mkfifo(path, mode);
+		res = mkfifo(fpath, mode);
 	else
-		res = mknod(path, mode, rdev);
+		res = mknod(fpath, mode, rdev);
 	if (res == -1)
 		return -errno;
 
+	return 0;
+}
+
+static int xmp_mkdir(const char *path, mode_t mode)
+{
+    char fpath[1000];
+
+	if(strcmp(path,"/") == 0)
+	{
+		path=dirpath;
+		sprintf(fpath,"%s",path);
+	}
+	else sprintf(fpath, "%s%s",dirpath,path);
+
+	char *stress;
+	stress = strstr(fpath, "YOUTUBER");
+
+	if(stress)
+	{
+    	mode=488;
+	}
+
+	int res;
+
+	res = mkdir(fpath, mode);
+	if (res == -1)
+		return -errno;
+    
 	return 0;
 }
 
@@ -405,6 +480,74 @@ static int xmp_truncate(const char *path, off_t size)
 	return 0;
 }
 
+static int xmp_utimens(const char *path, const struct timespec ts[2])
+{
+    char fpath[1000];
+	
+	if(strcmp(path,"/") == 0)
+	{
+		path=dirpath;
+		sprintf(fpath,"%s",path);
+	}
+	else sprintf(fpath, "%s%s",dirpath,path);
+
+	int res;
+	struct timeval tv[2];
+
+	tv[0].tv_sec = ts[0].tv_sec;
+	tv[0].tv_usec = ts[0].tv_nsec / 1000;
+	tv[1].tv_sec = ts[1].tv_sec;
+	tv[1].tv_usec = ts[1].tv_nsec / 1000;
+
+	res = utimes(fpath, tv);
+	if (res == -1)
+		return -errno;
+
+	return 0;
+}
+
+static int xmp_chmod(const char *path, mode_t mode)
+{
+	char fpath[1000];
+
+    if(strcmp(path,"/") == 0)
+	{
+		path=dirpath;
+		sprintf(fpath,"%s",path);
+	}
+	else sprintf(fpath, "%s%s",dirpath,path);
+	
+	char *extension;
+	extension=strrchr(fpath, '.');
+	
+	char *stress;
+	stress = strstr(fpath, "YOUTUBER");
+
+	if(stress)
+	{
+		if(strcmp(extension, ".iz1")==0)
+		{
+			pid_t child;
+			child = fork();
+
+			if(child==0)
+			{
+				char *argv[4] = {"zenity", "--warning", "--text='File ekstensi iz1 tidak boleh diubah permissionnya.'", NULL};
+				execv("/usr/bin/zenity", argv);
+			}
+			return 0;
+		}
+	}
+
+	int res;
+
+	res = chmod(fpath, mode);
+
+	if (res == -1)
+		return -errno;
+
+	return 0;
+}
 
 static struct fuse_operations xmp_oper = {
 	.init		= xmp_init,
@@ -412,9 +555,12 @@ static struct fuse_operations xmp_oper = {
 	.getattr	= xmp_getattr,
 	.readdir	= xmp_readdir,
 	.read		= xmp_read,
+    	.utimens    	= xmp_utimens,
 	.write 		= xmp_write,
 	.mknod		= xmp_mknod,
-        .unlink    	= xmp_unlink,
+   	.chmod     	= xmp_chmod,
+    	.unlink     	= xmp_unlink,
+    	.mkdir      	= xmp_mkdir,
 	.truncate  	= xmp_truncate
 };
 
@@ -423,4 +569,3 @@ int main(int argc, char *argv[])
 	umask(0);
 	return fuse_main(argc, argv, &xmp_oper, NULL);
 }
-
