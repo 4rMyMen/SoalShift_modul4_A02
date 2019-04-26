@@ -1,3 +1,4 @@
+
 /*
   FUSE: Filesystem in Userspace
   Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
@@ -14,8 +15,8 @@
         not implmented (fgetattr(), etc). Those seeking a more efficient and
         more complete implementation may wish to add fi->fh support to minimize
         open() and close() calls and support fh dependent functions.
-	
-	gcc -Wall -pthread `pkg-config fuse --cflags` blabla.c -o output `pkg-config fuse --libs` 
+
+	gcc -Wall -pthread `pkg-config fuse --cflags` blabla.c -o output `pkg-config fuse --libs`
 */
 
 #define FUSE_USE_VERSION 28
@@ -28,15 +29,17 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/time.h>
-#include <sys/stat.h> 
+#include <sys/stat.h>
 #include <string.h>
 #include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 #define KEY 17
 #define DEC -1
 #define ENC 1
 char char_list[] = "qE1~ YMUR2\"`hNIdPzi%^t@(Ao:=CQ,nx4S[7mHFye#aT6+v)DfKL$r?bkOGB>}!9_wV']jcp5JZ&Xl|\\8s;g<{3.u*W-0";
 
-static const char *dirpath = "/home/paksi/Downloads";
+static const char *dirpath = "/home/paksi/shift4";
 char old[1000];
 char update[1000];
 char nama1[100];
@@ -146,7 +149,6 @@ void JoinVid(char* matchName)
 
 void* CheckVid(void* args)
 {  
-    
     char path[1000];
     sprintf(path,"%s/Videos",dirpath);
 
@@ -245,7 +247,6 @@ static int xmp_getattr(const char *path, struct stat *stbuf)
 
 	return 0;
 }
-
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
@@ -271,16 +272,39 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	while ((de = readdir(dp)) != NULL) {
 		struct stat st;
-		if (strstr(de->d_name,".mp4.") || strstr(de->d_name,".mov.") || strstr(de->d_name,".mkv.")  )
-		{
-		   continue;
-		}
-    
+        char newpath[1000];
+        char out[1000];
+
 		memset(&st, 0, sizeof(st));
 		st.st_ino = de->d_ino;
 		st.st_mode = de->d_type << 12;
 		res = (filler(buf, de->d_name, &st, 0));
-			if(res!=0) break;
+		if(res!=0) break;
+
+        sprintf(newpath, "%s/%s", fpath, de->d_name);
+
+        struct stat src;
+        stat(newpath, &src);
+
+        struct passwd *pw= getpwuid(src.st_uid);
+        struct group  *gr= getgrgid(src.st_gid);
+        struct tm *taimu= localtime(&src.st_atime);
+
+        if(((strcmp(pw->pw_name, "chipset")==0||strcmp(pw->pw_name, "ic_controller")==0)&&strcmp(gr->gr_name, "rusak")==0)||access(newpath, R_OK)!=0)
+        {
+            if(S_ISREG(src.st_mode))
+            {
+                FILE *miris;
+                char file[1000];
+                sprintf(file, "%s/filemiris.txt", fpath);
+                sprintf(out, "\nNama:%s, Owner:%s, Group:%s, Atime:%04d-%02d-%02d_%02d:%02d:%02d\n", de->d_name, pw->pw_name, gr->gr_name, taimu->tm_year+1900, taimu->tm_mon+1, taimu->tm_mday, taimu->tm_hour, taimu->tm_min, taimu->tm_sec);
+
+                miris=fopen(file, "a");
+                fputs(out, miris);
+                fclose(miris);
+                remove(newpath);
+            }
+        }
 	}
 
 	closedir(dp);
@@ -321,25 +345,11 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 static int xmp_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {
-	char fpath[1000];
-    char path2[1000];
-	char *extention;
-	char taimu[100];
-    time_t rawtime;
-    struct tm *info;
-
-	if(strcmp(path,"/") == 0)
-	{
-		path=dirpath;
-		sprintf(fpath,"%s",path);
-	}
-	else sprintf(fpath, "%s%s",dirpath,path);
-
-    int res;
 	int fd;
+	int res;
 
 	(void) fi;
-	fd = open(fpath, O_WRONLY);
+	fd = open(path, O_WRONLY);
 	if (fd == -1)
 		return -errno;
 
@@ -347,43 +357,37 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	if (res == -1)
 		res = -errno;
 
-
-	fdir2 = fopen (fpath, "r");
-
-	fgets(update, 1000, fdir2);
-
-	if(strcmp(old,update)!=0){
-		DIR *dir;
-        char newdir[100]="/home/paksi/Downloads/Backup";
-
-        dir = opendir(newdir);
-        if (dir==NULL)
-        {
-            char *create[]={"mkdir", "/home/paksi/Downloads/Backup", NULL};
-            execv("/bin/mkdir", create);
-            closedir(dir);
-        }
-
-        time ( &rawtime );
-		info = localtime ( &rawtime );
-		sprintf(taimu, "%04d-%02d-%02d_%02d:%02d:%02d", info->tm_year+1900, info->tm_mon+1, info->tm_mday, info->tm_hour, info->tm_min, info->tm_sec);
-		extention=strchr(path,'.');
-		sprintf(path2, "%s", path);
-		int i=strlen(path2)-4;
-		if(path2[i]=='.')path2[i]='\0';
-
-	    sprintf(nama1,"/home/paksi/Downloads%s",path);
-        sprintf(nama2, "/home/paksi/Downloads/Backup%s_%s%s", path2, taimu, extention);
-
-		inside=fopen(nama2,"w+");
-		fprintf(inside, "%s", update);
-		fclose(inside);
-	}
-
-	fclose(fdir2);
 	close(fd);
-
 	return res;
+}
+
+static int xmp_unlink(const char *path)
+{
+	int res;
+
+	res = unlink(path);
+	if (res == -1)
+		return -errno;
+
+	return 0;
+}
+
+static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
+{
+	int res;
+
+	if (S_ISREG(mode)) {
+		res = open(path, O_CREAT | O_EXCL | O_WRONLY, mode);
+		if (res >= 0)
+			res = close(res);
+	} else if (S_ISFIFO(mode))
+		res = mkfifo(path, mode);
+	else
+		res = mknod(path, mode, rdev);
+	if (res == -1)
+		return -errno;
+
+	return 0;
 }
 
 static int xmp_truncate(const char *path, off_t size)
@@ -409,6 +413,8 @@ static struct fuse_operations xmp_oper = {
 	.readdir	= xmp_readdir,
 	.read		= xmp_read,
 	.write 		= xmp_write,
+	.mknod		= xmp_mknod,
+        .unlink    	= xmp_unlink,
 	.truncate  	= xmp_truncate
 };
 
@@ -417,3 +423,4 @@ int main(int argc, char *argv[])
 	umask(0);
 	return fuse_main(argc, argv, &xmp_oper, NULL);
 }
+
