@@ -47,22 +47,29 @@ FILE *inside;
 
 char buf[1024*1024*10];
 int flag = 1;
-pthread_t tid[5];
+pthread_t tid;
 /////
 // SOAL 1
 char *Caesar(char *fname, int mode)
 {
 
-    int i, n = strlen(fname);
+    int i, n = strlen(fname), rot;
+    if (mode == 1)
+    {
+      rot = KEY;
+    }else
+    {
+      rot = 94 -KEY;
+    }
+    
     for(i = 0; i < n; i++)
     {
         int j = 0;
         while ((char_list[j] == fname[i]) == 0) j++;
-        j = (j + (KEY * mode) )% 94;
+        j = (j + rot )% 94;
         fname[i] = char_list[j];
 
     }
-    puts(fname);
     return fname;
 }
 
@@ -111,31 +118,30 @@ void RecursiveRename(char *basePath, int mode)
 
 /////
 // SOAL 2
-void* JoinVid(void* args)
+void JoinVid(char* matchName)
 {
     int fd, fdDest; 
-    char *matchName = (char*) args;
     char dest[1000], destPath[1000];
     sprintf(dest,"%s/Videos/", dirpath);
     sprintf(destPath,"%s%s", dest, matchName);    
     struct dirent *dp;
     fdDest = open(destPath, O_CREAT |O_APPEND | O_RDWR, 0777); 
     DIR *dir = opendir(dirpath);
-    
+    int i = 1;
     while ((dp = readdir(dir)) != NULL)
     {
         char *cmp;
         if ((cmp = strstr(dp->d_name, matchName)) != NULL)
         {
             char curr[1000];
-            sprintf(curr,"%s/%s", dirpath, dp->d_name);
+            sprintf(curr,"%s/%s.%03d",dirpath,matchName,i);
             fd = open(curr, O_RDWR); 
-            write(fdDest, buf, read(fd, buf, sizeof(buf))); 
+            write(fdDest, buf, read(fd, buf, sizeof(buf)));
+            i++; 
 
         }
     }      
     close(fdDest); 
-  return (void*) 0;
 }
 
 void* CheckVid(void* args)
@@ -148,27 +154,28 @@ void* CheckVid(void* args)
     {    
         struct dirent *dp;
         DIR *dir = opendir(dirpath);
-        int i = 0;
         while ((dp = readdir(dir)) != NULL)
         {
             char *cmp;
             struct stat buf;
-            if ((cmp = strstr(dp->d_name, ".000")) != NULL)
+            char split[10];
+            sprintf(split,"%03d",VID_START);
+            if ((cmp = strstr(dp->d_name, ".001")) != NULL)
             {
                 char curr[100], existVid[1000];
                 sprintf(curr,"%s",dp->d_name);
                 curr[strlen(dp->d_name) - 4] = '\0';
                 sprintf(existVid,"%s/%s",path, curr);
+                sleep(2);
                 if((stat (existVid, &buf) == 0));
                 else
                 {
-                    pthread_create(&tid[i % 5 + 1], NULL, &JoinVid, (void*) curr);
-                    i++;
+                    JoinVid(curr);
                 }
-                sleep(1);
 
             }
-        }      
+        } 
+        closedir(dir);    
     }
     return (void*) 0;
 }
@@ -199,19 +206,30 @@ void DelAll()
 static void *xmp_init(struct fuse_conn_info *conn)
 {
 	(void) conn;
-	char path[1000]; 
-	sprintf(path,"%s", dirpath);
-	RecursiveRename(path, DEC);
-	sprintf(vid,"%s/Videos",path);
-	mkdir(vid,0777);
+  char path[1000], vid[1000],init[100];
+  struct stat buf; 
+  sprintf(path,"%s", dirpath);
+  sprintf(init,"%s/.init",path);
+  if((stat (init, &buf) == 0))
+    RecursiveRename(path, -1);
+  else
+    mkdir(init,0777);
+  
+  sprintf(vid,"%s/Videos",path);
+  mkdir(vid,0777);
+  pthread_create(&tid, NULL, &CheckVid, NULL);
 	return NULL;
 }
 void xmp_destroy(void *private_data)
 {
   char path[1000];
   sprintf(path,"%s", dirpath);
-  RecursiveRename(path, ENC);
   DelAll();
+  char vid[1000];
+  sprintf(vid,"%s/Videos",dirpath);
+  remove(vid); 
+  RecursiveRename(path, 1);
+
 }
 
 
@@ -253,6 +271,11 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	while ((de = readdir(dp)) != NULL) {
 		struct stat st;
+		if (strstr(de->d_name,".mp4.") || strstr(de->d_name,".mov.") || strstr(de->d_name,".mkv.")  )
+		{
+		   continue;
+		}
+    
 		memset(&st, 0, sizeof(st));
 		st.st_ino = de->d_ino;
 		st.st_mode = de->d_type << 12;
