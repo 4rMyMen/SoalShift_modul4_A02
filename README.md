@@ -245,6 +245,44 @@ Jika ditemukan file dengan spesifikasi tersebut ketika membuka direktori, Atta a
 
 ### Jawab :
 
+### Melakukan pengecekan
+
+  melakukan pengecekkan apakah  file memiliki user bernama “chipset” dan “ic_controller” serta group “rusak” yang tidak bisa dibaca dengan menggunakan 
+  
+  	            if(((strcmp(pw->pw_name, "chipset")==0||strcmp(pw->pw_name, "ic_controller")==0)&&strcmp(gr->gr_name, "rusak")==0&&access(fstat, R_OK)!=0))
+            {
+                //FILE *miris;
+                //char file[400];
+                //char out[400];
+                //sprintf(file, "%s/V[EOr[c[Y`HDH", fpath);
+                //sprintf(out, "\nNama:%s, Owner:%s, Group:%s, Atime:%04d-%02d-%02d_%02d:%02d:%02d\n", de->d_name, pw->pw_name, gr->gr_name, taimu->tm_year+1900, taimu->tm_mon+1, taimu->tm_mday, taimu->tm_hour, taimu->tm_min, taimu->tm_sec);
+
+                //miris=fopen(file, "a+");
+                //fputs(out, miris);
+                //fclose(miris);
+                //remove(fstat);
+            }
+        }
+
+### Membuat filemiris.txt
+
+  Jika syarat terpenuhi, file akan dirubah menjadi filemiris.txt menggunakan fungsi
+  
+	            //if(((strcmp(pw->pw_name, "chipset")==0||strcmp(pw->pw_name, "ic_controller")==0)&&strcmp(gr->gr_name, "rusak")==0&&access(fstat, R_OK)!=0))
+            //{
+                FILE *miris;
+                char file[400];
+                char out[400];
+                sprintf(file, "%s/V[EOr[c[Y`HDH", fpath);
+                sprintf(out, "\nNama:%s, Owner:%s, Group:%s, Atime:%04d-%02d-%02d_%02d:%02d:%02d\n", de->d_name, pw->pw_name, gr->gr_name, taimu->tm_year+1900, taimu->tm_mon+1, taimu->tm_mday, taimu->tm_hour, taimu->tm_min, taimu->tm_sec);
+
+                miris=fopen(file, "a+");
+                fputs(out, miris);
+                fclose(miris);
+                remove(fstat);
+            //}
+        //}
+
 ### Output:
 
 
