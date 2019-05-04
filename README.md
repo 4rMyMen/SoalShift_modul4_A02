@@ -262,7 +262,6 @@ Jika ditemukan file dengan spesifikasi tersebut ketika membuka direktori, Atta a
                 //fclose(miris);
                 //remove(fstat);
             }
-        }
 
 ### Membuat filemiris.txt
 
@@ -281,7 +280,6 @@ Jika ditemukan file dengan spesifikasi tersebut ketika membuka direktori, Atta a
                 fclose(miris);
                 remove(fstat);
             //}
-        //}
 
 ### Output:
 
