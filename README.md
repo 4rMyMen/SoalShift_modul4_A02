@@ -72,10 +72,15 @@ Untuk mendekripsi file saat di-mount, pada operasi readdir, lakukan dekripsi saa
 			if(res!=0) break;
 	}
  
-### Output
+### Output:
 
+![picture](/Output/soal1_1.jpg)
 
+File di folder asal terenkripsi.
 
+![picture](/Output/soal1_2.jpg)
+
+File di folder yang di-mount terdekripsi.
 
 ## Soal 2 
 Semua file video yang tersimpan secara terpecah-pecah (splitted) harus secara otomatis tergabung (joined) dan diletakkan dalam folder “Videos”
@@ -210,10 +215,23 @@ Urutan operasi dari kebutuhan ini adalah:
     closedir(dir);
 	rmdir(path);  // hapus folder Videos
 
-### Output
+### Output:
 
+![picture](/Output/soal2_1.jpg)
 
+Folder Videos dibuat dan file part video ada di folder asal.
 
+![picture](/Output/soal2_2.jpg)
+
+File part video tersembunyi di folder yang di-mount.
+
+![picture](/Output/soal2_3.jpg)
+
+File part video berhasil digabung dan ada di folder Videos.
+
+![picture](/Output/soal2_4.jpg)
+
+Folder Videos hilang setelah di unmount.
 
 ## Soal 3
 Sebelum diterapkannya file system ini, Atta pernah diserang oleh hacker LAPTOP_RUSAK yang menanamkan user bernama “chipset” dan “ic_controller” serta group “rusak” yang tidak bisa dihapus. Karena paranoid, Atta menerapkan aturan pada file system ini untuk menghapus “file bahaya” yang memiliki spesifikasi:
@@ -224,10 +242,10 @@ Sebelum diterapkannya file system ini, Atta pernah diserang oleh hacker LAPTOP_R
 Jika ditemukan file dengan spesifikasi tersebut ketika membuka direktori, Atta akan menyimpan nama file, group ID, owner ID, dan waktu terakhir diakses dalam file “filemiris.txt” (format waktu bebas, namun harus memiliki jam menit detik dan tanggal) lalu menghapus “file bahaya” tersebut untuk mencegah serangan lanjutan dari LAPTOP_RUSAK.
 
 
+
 ### Jawab :
 
-
-
+### Output:
 
 
 ## Soal 4 
@@ -239,7 +257,7 @@ Pada folder YOUTUBER, setiap membuat folder permission foldernya akan otomatis m
 
 ### Output:
 
-## soal 5
+## Soal 5
 Ketika mengedit suatu file dan melakukan save, maka akan terbuat folder baru bernama Backup kemudian hasil dari save tersebut akan disimpan pada backup dengan nama namafile_[timestamp].ekstensi. Dan ketika file asli dihapus, maka akan dibuat folder bernama RecycleBin, kemudian file yang dihapus beserta semua backup dari file yang dihapus tersebut (jika ada) di zip dengan nama namafile_deleted_[timestamp].zip dan ditaruh kedalam folder RecycleBin (file asli dan backup terhapus). Dengan format [timestamp] adalah yyyy-MM-dd_HH:mm:ss
 
 ### Jawab :
