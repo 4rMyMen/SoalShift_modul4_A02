@@ -1,4 +1,3 @@
-
 /*
   FUSE: Filesystem in Userspace
   Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
@@ -15,7 +14,6 @@
         not implmented (fgetattr(), etc). Those seeking a more efficient and
         more complete implementation may wish to add fi->fh support to minimize
         open() and close() calls and support fh dependent functions.
-
 	gcc -Wall -pthread `pkg-config fuse --cflags` blabla.c -o output `pkg-config fuse --libs`
 */
 
@@ -36,30 +34,26 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
-#ifdef HAVE_SETXATTR
-#include <sys/xattr.h>
-#endif
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
-#define KEY 17
+#define KEY 31
 #define DEC -1
 #define ENC 1
-char char_list[] = "qE1~ YMUR2\"`hNIdPzi%^t@(Ao:=CQ,nx4S[7mHFye#aT6+v)DfKL$r?bkOGB>}!9_wV']jcp5JZ&Xl|\\8s;g<{3.u*W-0";
 
-static const char *dirpath = "/home/paksi/shift4";
+static const char *dirpath = "/home/bimo/Desktop/loltest";
 
-char buf[1024*1024*10];
-int flag = 1;
-pthread_t tid;
+
+int flag;
+pthread_t tid[4];
 /////
 // SOAL 1
-char *Caesar(char *fname, int mode)
+char *Caesar(char fname[400], int mode)
 {
-
+    char char_list[400] = "qE1~ YMUR2\"`hNIdPzi%^t@(Ao:=CQ,nx4S[7mHFye#aT6+v)DfKL$r?bkOGB>}!9_wV']jcp5JZ&Xl|\\8s;g<{3.u*W-0";
     int i, n = strlen(fname), rot;
     if (mode == 1)
     {
@@ -71,6 +65,8 @@ char *Caesar(char *fname, int mode)
     
     for(i = 0; i < n; i++)
     {
+        if (fname[i]== '\0') break; 
+		if (fname[i]== '/') continue;
         int j = 0;
         while ((char_list[j] == fname[i]) == 0) j++;
         j = (j + rot )% 94;
@@ -80,127 +76,118 @@ char *Caesar(char *fname, int mode)
     return fname;
 }
 
-void RecursiveRename(char *basePath, int mode)
+void *JoinVid(void *args)
 {
-    char path[1000];
-    struct dirent *dp;
-    DIR *dir = opendir(basePath);
-
-    if (!dir)
-        return;
-
-    while ((dp = readdir(dir)) != NULL)
-    {
-        if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
-        {
-            
-            struct stat sb;
-            char curr[1000];
-            sprintf(curr,"%s/%s",basePath,dp->d_name);
-            char new[1000];
-            char *csr = Caesar(dp->d_name, mode);
-            sprintf(new,"%s/%s",basePath,csr);
-            if (stat(curr, &sb) == 0 && S_ISDIR(sb.st_mode))
-            {
-                sprintf(path,"%s",curr);
-                RecursiveRename(path,mode);
-                rename( path , new );
-
-            }
-            else
-            {
-                sprintf(path,"%s",curr);
-                rename( path, new );
-            }
-            
- 
-        }
-    }
-
-    closedir(dir);
-}
-// SOAL 1
-/////
-
-
-/////
-// SOAL 2
-void JoinVid(char* matchName)
-{
+    flag = 0;
+    char *tmp = (char*) args;
+    char buf[1025*1025*2];
     int fd, fdDest; 
-    char dest[1000], destPath[1000];
-    sprintf(dest,"%s/Videos/", dirpath);
-    sprintf(destPath,"%s%s", dest, matchName);    
+    char dest[400], destPath[400], matchName[400];
+    memset(dest,'\0',sizeof(dest));
+    memset(destPath,'\0',sizeof(destPath));
+    memset(matchName,'\0',sizeof(matchName));
+    strcpy(matchName,tmp);
+    char vid[7] ="Videos";
+    Caesar(vid,1);
+    sprintf(dest,"%s/%s",dirpath, vid);
+    sprintf(destPath,"%s/%s", dest, matchName);    
     struct dirent *dp;
     fdDest = open(destPath, O_CREAT |O_APPEND | O_RDWR, 0777); 
     DIR *dir = opendir(dirpath);
-    int i = 1;
+    int i = 0;
     while ((dp = readdir(dir)) != NULL)
     {
         char *cmp;
         if ((cmp = strstr(dp->d_name, matchName)) != NULL)
         {
-            char curr[1000];
-            sprintf(curr,"%s/%s.%03d",dirpath,matchName,i);
+            char curr[400], idenc[10];
+            memset(curr,'\0',sizeof(curr));
+            memset(idenc,'\0',sizeof(idenc));
+			sprintf(idenc,".%03d",i);
+			Caesar(idenc,1);
+            sprintf(curr,"%s/%s%s",dirpath,matchName,idenc);
             fd = open(curr, O_RDWR); 
             write(fdDest, buf, read(fd, buf, sizeof(buf)));
             i++; 
 
         }
+        close(fd);
     }      
     close(fdDest); 
+    return (void*) 0;
 }
 
-void* CheckVid(void* args)
+void CheckVid()
 {  
-    char path[1000];
-    sprintf(path,"%s/Videos",dirpath);
+    
+    char path[400];
+    memset(path,'\0',sizeof(path));
+    char vid[7] ="Videos";
+    Caesar(vid,1);
+    sprintf(path,"%s/%s",dirpath, vid);
 
-    while(flag)
-    {    
-        struct dirent *dp;
-        DIR *dir = opendir(dirpath);
-        while ((dp = readdir(dir)) != NULL)
+
+    struct dirent *dp;
+    DIR *dir = opendir(dirpath);
+    int i = 0;
+    while ((dp = readdir(dir)) != NULL)
+    {
+        char *cmp;
+        struct stat buf;
+        if ((cmp = strstr(Caesar(dp->d_name,-1), ".000")) != NULL)
         {
-            char *cmp;
-            struct stat buf;
-            if ((cmp = strstr(dp->d_name, ".001")) != NULL)
-            {
-                char curr[100], existVid[1000];
-                sprintf(curr,"%s",dp->d_name);
-                curr[strlen(dp->d_name) - 4] = '\0';
-                sprintf(existVid,"%s/%s",path, curr);
-                sleep(2);
-                if((stat (existVid, &buf) == 0));
-                else
-                {
-                    JoinVid(curr);
-                }
+            Caesar(dp->d_name,1);
+            char curr[400], existVid[400];
+            memset(curr,'\0',sizeof(curr));
+            memset(existVid,'\0',sizeof(existVid));
+            strcpy(curr,dp->d_name);
+            curr[strlen(dp->d_name) - 4] = '\0';
+            sprintf(existVid,"%s/%s",path, curr);
 
+            if((stat (existVid, &buf) == 0));
+            else
+            {
+                // JoinVid(curr);
+                flag = 1;
+                pthread_create(&tid[i], NULL, &JoinVid, (void *) curr);
+                while(flag);
+                i++;
+                
             }
-        } 
-        closedir(dir);    
+
+        }
+    } 
+    while (i--)
+    {
+        pthread_join(tid[i],NULL);
     }
-    return (void*) 0;
+    
+    closedir(dir);    
+
+
 }
 
 void DelAll()
 {
     flag = 0;
     struct dirent *dp;
-    char path[1000];
-    sprintf(path,"%s/Videos",dirpath);
+    char path[400];
+    memset(path,'\0',sizeof(path));
+       char vid[7] ="Videos";
+    Caesar(vid,1);
+    sprintf(path,"%s/%s",dirpath, vid);
     DIR *dir = opendir(path);
     while ((dp = readdir(dir)) != NULL)
     {
         if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0)
         {
-            char curr[1000];
+            char curr[400];
             sprintf(curr,"%s/%s",path,dp->d_name);
             remove(curr);
         }
     }
     closedir(dir);
+	rmdir(path);
 }
 // SOAL 2
 /////
@@ -208,63 +195,66 @@ void DelAll()
 
 static void *xmp_init(struct fuse_conn_info *conn)
 {
-	(void) conn;
-  char path[1000], vid[1000],init[100];
-  struct stat buf; 
-  sprintf(path,"%s", dirpath);
-  sprintf(init,"%s/.init",path);
-  if((stat (init, &buf) == 0))
-    RecursiveRename(path, -1);
-  else
-    mkdir(init,0777);
-  
-  sprintf(vid,"%s/Videos",path);
-  mkdir(vid,0777);
-  pthread_create(&tid, NULL, &CheckVid, NULL);
-	return NULL;
+    (void) conn;
+    
+   char vid[7] ="Videos";
+    char path[400];
+    memset(path,'\0',sizeof(path));
+    Caesar(vid,1);
+    sprintf(path,"%s/%s",dirpath, vid);
+    mkdir(path,0777);
+    CheckVid();
+    return NULL;
 }
 void xmp_destroy(void *private_data)
 {
-  char path[1000];
-  sprintf(path,"%s", dirpath);
   DelAll();
-  char vid[1000];
-  sprintf(vid,"%s/Videos",dirpath);
-  remove(vid); 
-  RecursiveRename(path, 1);
 
 }
+
+
 
 
 static int xmp_getattr(const char *path, struct stat *stbuf)
 {
     int res;
-	char fpath[1000];
+	char fpath[400], fname[400];
 
-	if(strcmp(path,"/") == 0)
+    if(strcmp(path, ".")!=0 && strcmp(path, "..")!=0)
 	{
-		path=dirpath;
-		sprintf(fpath,"%s",path);
-	}
-	else sprintf(fpath, "%s%s",dirpath,path);
+        memset(fname, '\0', sizeof(fname));
+        strcpy(fname, path);
+        Caesar(fname,1);
+        sprintf(fpath, "%s%s", dirpath, fname);
+    }
+    else
+	{
+	    sprintf(fpath,"%s%s",dirpath,path);
+    }
+	
+    res = lstat(fpath, stbuf);
 
-	res = lstat(fpath, stbuf);
 	if (res == -1)
 		return -errno;
 
 	return 0;
 }
+
 static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 		       off_t offset, struct fuse_file_info *fi)
 {
-    char fpath[1000];
-
+    char fpath[400], fname[400];
 	if(strcmp(path,"/") == 0)
-    {
+	{
 		path=dirpath;
 		sprintf(fpath,"%s",path);
 	}
-	else sprintf(fpath, "%s%s",dirpath,path);
+	else{
+        memset(fname, '\0', sizeof(fname));
+        strcpy(fname, path);
+        Caesar(fname,1);
+        sprintf(fpath, "%s%s", dirpath, fname);
+    }
 	int res = 0;
 
 	DIR *dp;
@@ -279,42 +269,43 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	while ((de = readdir(dp)) != NULL) {
 		struct stat st;
-        char newpath[1000];
-        char out[1000];
-		    if (strstr(de->d_name,".mp4.") || strstr(de->d_name,".mov.") || strstr(de->d_name,".mkv.")  )
-    {
-      continue;
-    }
+        char fstat[400];
+
 		memset(&st, 0, sizeof(st));
 		st.st_ino = de->d_ino;
 		st.st_mode = de->d_type << 12;
-		res = (filler(buf, de->d_name, &st, 0));
-		if(res!=0) break;
+        memset(fstat, '\0', sizeof(fstat));
+        sprintf(fstat, "%s/%s", fpath, de->d_name);
 
-        sprintf(newpath, "%s/%s", fpath, de->d_name);
+        stat(fstat, &st);
 
-        struct stat src;
-        stat(newpath, &src);
+        struct passwd *pw= getpwuid(st.st_uid);
+        struct group  *gr= getgrgid(st.st_gid);
+        struct tm *taimu= localtime(&st.st_atime);
 
-        struct passwd *pw= getpwuid(src.st_uid);
-        struct group  *gr= getgrgid(src.st_gid);
-        struct tm *taimu= localtime(&src.st_atime);
-
-        if(((strcmp(pw->pw_name, "chipset")==0||strcmp(pw->pw_name, "ic_controller")==0)&&strcmp(gr->gr_name, "rusak")==0)||access(newpath, R_OK)!=0)
-        {
-            if(S_ISREG(src.st_mode))
+        if(strcmp(de->d_name, ".")!=0 && strcmp(de->d_name, "..")!=0){
+            Caesar(de->d_name,-1);
+            if(((strcmp(pw->pw_name, "chipset")==0||strcmp(pw->pw_name, "ic_controller")==0)&&strcmp(gr->gr_name, "rusak")==0))
             {
                 FILE *miris;
-                char file[1000];
-                sprintf(file, "%s/filemiris.txt", fpath);
+                char file[400];
+                char out[400];
+                sprintf(file, "%s/V[EOr[c[Y`HDH", fpath);
                 sprintf(out, "\nNama:%s, Owner:%s, Group:%s, Atime:%04d-%02d-%02d_%02d:%02d:%02d\n", de->d_name, pw->pw_name, gr->gr_name, taimu->tm_year+1900, taimu->tm_mon+1, taimu->tm_mday, taimu->tm_hour, taimu->tm_min, taimu->tm_sec);
 
-                miris=fopen(file, "a");
+                miris=fopen(file, "a+");
                 fputs(out, miris);
                 fclose(miris);
-                remove(newpath);
+                remove(fstat);
             }
         }
+        if (strstr(de->d_name, ".mp4.") || strstr(de->d_name, ".mov.") || strstr(de->d_name, ".mkv."))
+        {
+           continue;
+        }
+        
+        res = (filler(buf, de->d_name, &st, 0));
+			if(res!=0) break;
 	}
 
 	closedir(dp);
@@ -324,13 +315,12 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 		    struct fuse_file_info *fi)
 {
-    char fpath[1000];
-    if(strcmp(path,"/") == 0)
-    {
-        path=dirpath;
-        sprintf(fpath,"%s",path);
-    }
-	else sprintf(fpath, "%s%s",dirpath,path);
+    char fpath[400], fname[400];
+
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+     Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
 
 	int res = 0;
  	int fd = 0 ;
@@ -350,21 +340,17 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 static int xmp_write(const char *path, const char *buf, size_t size,
 		     off_t offset, struct fuse_file_info *fi)
 {   
-    char fpath[1000];
-    char newpath[1000];
-    
-    if(strcmp(path,"/") == 0)
-	{
-		path=dirpath;
-		sprintf(fpath,"%s",path);
-	}
-	else sprintf(fpath, "%s%s",dirpath,path);
-
 	int fd;
 	int res;
+    char fpath[400], fname[400];
+
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+    Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
 
 	(void) fi;
-	fd = open(path, O_WRONLY);
+	fd = open(fpath, O_WRONLY);
 	if (fd == -1)
 		return -errno;
 
@@ -374,104 +360,121 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 
 	close(fd);
 
-    char *stress;
-	stress = strstr(fpath, "YOUTUBER");
-
-	if(stress)
-	{
-		pid_t stressbah;
-		stressbah=fork();
-		if(stressbah==0)
-		{
-			sprintf(newpath, "%s.iz1", fpath);
-			char *mov[]={"mv", fpath, newpath, NULL};
-			execv("/bin/mv", mov);
-		}
-	}
 
 	return res;
 }
 
+static int xmp_rmdir(const char *path)
+{
+	int res;
+    char fpath[400], fname[400];
+
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+    Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
+
+	res = rmdir(fpath);
+	if (res == -1)
+		return -errno;
+
+	return 0;
+}
+
+
+static int xmp_rename(const char *from, const char *to)
+{
+	int res;
+    char enfrom[400], ento[400];
+    char frpath[400], topath[400];
+
+    memset(enfrom, '\0', sizeof(enfrom));
+    memset(ento, '\0', sizeof(ento));
+    strcpy(enfrom, from);
+    strcpy(ento, to);
+    Caesar(enfrom,1);
+    Caesar(ento,1);
+    sprintf(frpath, "%s%s", dirpath, enfrom);
+    sprintf(topath, "%s%s", dirpath, ento);
+
+	res = rename(frpath, topath);
+	if (res == -1)
+		return -errno;
+
+	return 0;
+}
+
+
 static int xmp_unlink(const char *path)
 {
 	int res;
+    char fpath[400], fname[400];
 
-	res = unlink(path);
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+    Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
+
+	res = unlink(fpath);
 	if (res == -1)
 		return -errno;
 
 	return 0;
 }
 
-static int xmp_mknod(const char *path, mode_t mode, dev_t rdev)
+
+static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
 	int res;
-    char fpath[1000];
+    char fpath[400], fname[400];
 
-	if(strcmp(path,"/") == 0)
-	{
-		path=dirpath;
-		sprintf(fpath,"%s",path);
-	}
-	else sprintf(fpath, "%s%s",dirpath,path);
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+    Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
 
-    char *stress;
-	stress = strstr(fpath, "YOUTUBER");
-
-    if(stress)
-	{
-    	mode=33184;
-	}
-
-	if (S_ISREG(mode)) {
-		res = open(fpath, O_CREAT | O_EXCL | O_WRONLY, mode);
-		if (res >= 0)
-			res = close(res);
-	} else if (S_ISFIFO(mode))
-		res = mkfifo(fpath, mode);
-	else
-		res = mknod(fpath, mode, rdev);
+	res = open(fpath, fi->flags);
 	if (res == -1)
 		return -errno;
 
+	close(res);
 	return 0;
 }
-
 static int xmp_mkdir(const char *path, mode_t mode)
 {
-    char fpath[1000];
-
-	if(strcmp(path,"/") == 0)
-	{
-		path=dirpath;
-		sprintf(fpath,"%s",path);
-	}
-	else sprintf(fpath, "%s%s",dirpath,path);
-
-	char *stress;
-	stress = strstr(fpath, "YOUTUBER");
-
-	if(stress)
-	{
-    	mode=488;
-	}
-
 	int res;
-
+    char fpath[400], fname[400];
+    
+    memset(fname, '\0', sizeof(fname));
+	strcpy(fname, path);
+	Caesar(fname,1);
+	sprintf(fpath, "%s%s", dirpath, fname);
 	res = mkdir(fpath, mode);
+
+    if(strstr("@ZA>AXio",fpath)==0)
+    {
+            res=mkdir(fpath,0750);
+    }
+    else
+    {
+            res=mkdir(fpath,mode);
+    }
+
 	if (res == -1)
 		return -errno;
-    
+
 	return 0;
 }
 
 static int xmp_truncate(const char *path, off_t size)
 {
-
-	char fpath[1000];
-	sprintf(fpath,"%s%s",dirpath,path);
-
 	int res;
+    char fpath[400], fname[400];
+
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+    Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
 
 	res = truncate(fpath, size);
 	if (res == -1)
@@ -482,17 +485,14 @@ static int xmp_truncate(const char *path, off_t size)
 
 static int xmp_utimens(const char *path, const struct timespec ts[2])
 {
-    char fpath[1000];
-	
-	if(strcmp(path,"/") == 0)
-	{
-		path=dirpath;
-		sprintf(fpath,"%s",path);
-	}
-	else sprintf(fpath, "%s%s",dirpath,path);
-
 	int res;
 	struct timeval tv[2];
+    char fpath[400], fname[400];
+
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+    Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
 
 	tv[0].tv_sec = ts[0].tv_sec;
 	tv[0].tv_usec = ts[0].tv_nsec / 1000;
@@ -508,60 +508,118 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 
 static int xmp_chmod(const char *path, mode_t mode)
 {
-	char fpath[1000];
+	int res;
+    char fpath[400], fname[400];//, npath[400];
 
-    if(strcmp(path,"/") == 0)
-	{
-		path=dirpath;
-		sprintf(fpath,"%s",path);
-	}
-	else sprintf(fpath, "%s%s",dirpath,path);
-	
-	char *extension;
-	extension=strrchr(fpath, '.');
-	
-	char *stress;
-	stress = strstr(fpath, "YOUTUBER");
 
-	if(stress)
-	{
-		if(strcmp(extension, ".iz1")==0)
-		{
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+
+	Caesar(fname,1);
+	sprintf(fpath, "%s%s", dirpath, fname);
+    //sprintf(npath, "%s/@ZA>AXio/", fpath);
+	res = chmod(fpath, mode);
+
+    if(strstr(fpath,"@ZA>AXio")==0)
+    {
+		if(strstr(fpath,"`[S%")){
 			pid_t child;
-			child = fork();
-
-			if(child==0)
-			{
-				char *argv[4] = {"zenity", "--warning", "--text='File ekstensi iz1 tidak boleh diubah permissionnya.'", NULL};
-				execv("/usr/bin/zenity", argv);
+			child=fork();
+			if(child==0){
+				char *argv[]={"zenity","--warning","--text='File ekstensi iz1 tidak boleh diubah permissionnya.'",NULL};
+				execv("/usr/bin/zenity",argv);
 			}
 			return 0;
 		}
-	}
+		else{
+			res=chmod(fpath,mode);
+		}
+    }
+    else{
+        res=chmod(fpath,mode);
+    }
+	if (res == -1)
+		return -errno;   
 
+    return 0;
+}
+
+
+static int xmp_chown(const char *path, uid_t uid, gid_t gid)
+{
 	int res;
+    char fpath[400], fname[400];
 
-	res = chmod(fpath, mode);
+    memset(fname, '\0', sizeof(fname));
+    strcpy(fname, path);
+    Caesar(fname,1);
+    sprintf(fpath, "%s%s", dirpath, fname);
 
+	res = lchown(fpath, uid, gid);
 	if (res == -1)
 		return -errno;
 
 	return 0;
 }
 
+
+static int xmp_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
+    char iz [400];
+    //char npath [400];
+    (void) fi;
+
+    int res;
+    char fpath[400], fname[400];
+    memset(fname, '\0', sizeof(fname));
+	strcpy(fname, path);
+	Caesar(fname,1);
+	sprintf(fpath, "%s%s", dirpath, fname);
+    //sprintf(npath, "%s@ZA>AXio/", fpath);
+	res = creat(fpath, mode);
+
+    if(strstr("/@ZA>AXio/",fpath)==0)
+    {   
+		res=creat(fpath,0640);
+		pid_t child;
+		child=fork();
+		if(child==0){
+			strcpy(iz,fpath);
+			strcat(iz,"`[S%");
+			char *argv[]={"mv",fpath,iz,NULL};
+			execvp(argv[0],argv);
+		}
+		return 0;
+    }
+    else
+    {
+		res=creat(fpath,mode);
+    }
+
+    if(res == -1)
+	    return -errno;
+
+    close(res);
+
+    return 0;
+}
+
 static struct fuse_operations xmp_oper = {
-	.init		= xmp_init,
-	.destroy	= xmp_destroy,
+	.init     	= xmp_init,
 	.getattr	= xmp_getattr,
 	.readdir	= xmp_readdir,
+	.mkdir		= xmp_mkdir,
+	.unlink		= xmp_unlink,
+	.rmdir		= xmp_rmdir,
+	.rename		= xmp_rename,
+	.chmod		= xmp_chmod,
+	.chown		= xmp_chown,
+	.truncate	= xmp_truncate,
+	.utimens	= xmp_utimens,
+	.open		= xmp_open,
 	.read		= xmp_read,
-    	.utimens    	= xmp_utimens,
-	.write 		= xmp_write,
-	.mknod		= xmp_mknod,
-   	.chmod     	= xmp_chmod,
-    	.unlink     	= xmp_unlink,
-    	.mkdir      	= xmp_mkdir,
-	.truncate  	= xmp_truncate
+	.write		= xmp_write,
+	.create   	= xmp_create,
+	.destroy  = xmp_destroy,
 };
 
 int main(int argc, char *argv[])
