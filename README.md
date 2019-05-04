@@ -283,15 +283,52 @@ Jika ditemukan file dengan spesifikasi tersebut ketika membuka direktori, Atta a
 
 ### Output:
 
+![picture](/Output/Soal_3.jpg)
+
+file berubah menjadi filemiris.txt
 
 ## Soal 4 
 Pada folder YOUTUBER, setiap membuat folder permission foldernya akan otomatis menjadi 750. Juga ketika membuat file permissionnya akan otomatis menjadi 640 dan ekstensi filenya akan bertambah “.iz1”. File berekstensi “.iz1” tidak bisa diubah permissionnya dan memunculkan error bertuliskan “File ekstensi iz1 tidak boleh diubah permissionnya.”
 
 
-
 ### Jawab :
 
+### Mengubah permission folder di dalam YOUTUBER menjadi 750
+
+  jika di dalam folder YOUTUBER tersebut akan dibuat folder, permissionnya akan berubah otomatis menjadi 750. Di dalam mkdir, diberi kondisi if untuk mengecek apakah folder tersebut berada di dalam folder YOUTUBER atau tidak.
+  
+	if(strstr(fpath, "/@ZA>AXio")!=NULL)
+    {
+        res=mkdir(fpath,0750);
+        return 0;
+    }
+    else
+    {
+            res=mkdir(fpath,mode);
+    }
+   
+### Mengubah permission file di dalam YOUTUBER menjadi 640 dan menambahkan ekstensi iz1
+
+  jika di dalam folder YOUTUBER tersebut akan dibuat folder, permissionnya akan berubah otomatis menjadi 640 dan menambahkan ekstensi iz1. Diberi kondisi if untuk mengecek apakah folder tersebut berada di dalam folder YOUTUBER atau tidak.
+
+	if(strstr(fpath,"/@ZA>AXio")!=NULL)
+	{
+        strcpy(iz,fpath);
+		strcat(iz,"`[S%");
+        rename(fpath, iz);
+        res = open(iz, fi->flags, 0640 );
+        return 0;
+    	}
+    	else
+    	{
+        	res = creat(fpath, mode );
+    	}
+
 ### Output:
+
+![picture](/Output/Soal_4.jpg)
+
+ekstensi file tertambah iz1 dan permission menjadi 640, permission folder juga menjadi 750
 
 ## Soal 5
 Ketika mengedit suatu file dan melakukan save, maka akan terbuat folder baru bernama Backup kemudian hasil dari save tersebut akan disimpan pada backup dengan nama namafile_[timestamp].ekstensi. Dan ketika file asli dihapus, maka akan dibuat folder bernama RecycleBin, kemudian file yang dihapus beserta semua backup dari file yang dihapus tersebut (jika ada) di zip dengan nama namafile_deleted_[timestamp].zip dan ditaruh kedalam folder RecycleBin (file asli dan backup terhapus). Dengan format [timestamp] adalah yyyy-MM-dd_HH:mm:ss
