@@ -323,6 +323,27 @@ Pada folder YOUTUBER, setiap membuat folder permission foldernya akan otomatis m
     	{
         	res = creat(fpath, mode );
     	}
+	
+### Memunculkan peringatan saat mengubah permission file iz1
+
+	if(strstr(fpath,"/@ZA>AXio")!=NULL)
+    {   
+        sprintf(newdir, "%s/@ZA>AXio", fpath);
+        if(strcmp(extention,"`[S%")==0)
+        {
+			pid_t child;
+			child=fork();
+			if(child==0){
+				char *argv[]={"zenity","--warning","--text='File ekstensi iz1 tidak boleh diubah permissionnya.'",NULL};
+				execv("/usr/bin/zenity",argv);
+			}
+            res=chmod(fpath,0640);
+        	return 0;
+        }
+    }
+    else{
+        res=chmod(fpath,mode);
+    }
 
 ### Output:
 
@@ -335,5 +356,42 @@ Ketika mengedit suatu file dan melakukan save, maka akan terbuat folder baru ber
 
 ### Jawab :
 
+### Membuat folder Backup dan membackup file
+
+	 char backup[10]="Backup";
+    Caesar(backup, 1);
+    sprintf(new,"%s/%s/", dirpath, backup);
+
+    fdir2=fopen(fpath, "r");
+	fgets(update, 400, fdir2);
+
+	if(strcmp(old,update)!=0){
+        struct stat sb;
+        if (stat(new, &sb) == 0 && S_ISDIR(sb.st_mode));
+        else mkdir(new,0777);
+
+        time ( &rawtime );
+		info = localtime ( &rawtime );
+		sprintf(taimu, "_%04d-%02d-%02d_%02d:%02d:%02d", info->tm_year+1900, info->tm_mon+1, info->tm_mday, info->tm_hour, info->tm_min, info->tm_sec);
+        Caesar(taimu, 1);
+
+        Caesar(extention, 1);
+		strcpy(path2,fname);
+		int i=strlen(path2)-strlen(extention);
+		path2[i]='\0';
+
+        sprintf(name2, "%s%s%s%s", new, path2, taimu, extention);
+
+		inside=fopen(name2,"w+");
+		fprintf(inside, "%s", update);
+		fclose(inside);
+	}
+
+
+	fclose(fdir2);
+
 ### Output:
 
+![picture](/Output/Soal_5.jpg)
+
+Folder Backup dan file backup terbuat
