@@ -36,15 +36,22 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
-#define KEY 31
+#define KEY 17
 #define DEC -1
 #define ENC 1
 
-static const char *dirpath = "/home/bimo/Desktop/loltest";
+    FILE *fdir1;
+    FILE *fdir2;
+    FILE *inside;
+    char old[400];
+    char update[400];
+
+static const char *dirpath = "/home/paksi/shift4";
 
 
 int flag;
@@ -114,6 +121,7 @@ void *JoinVid(void *args)
         close(fd);
     }      
     close(fdDest); 
+
     return (void*) 0;
 }
 
@@ -191,7 +199,6 @@ void DelAll()
 }
 // SOAL 2
 /////
-
 
 static void *xmp_init(struct fuse_conn_info *conn)
 {
@@ -285,7 +292,7 @@ static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
         if(strcmp(de->d_name, ".")!=0 && strcmp(de->d_name, "..")!=0){
             Caesar(de->d_name,-1);
-            if(((strcmp(pw->pw_name, "chipset")==0||strcmp(pw->pw_name, "ic_controller")==0)&&strcmp(gr->gr_name, "rusak")==0))
+            if(((strcmp(pw->pw_name, "chipset")==0||strcmp(pw->pw_name, "ic_controller")==0)&&strcmp(gr->gr_name, "rusak")==0&&access(fstat, R_OK)!=0))
             {
                 FILE *miris;
                 char file[400];
@@ -319,8 +326,11 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 
     memset(fname, '\0', sizeof(fname));
     strcpy(fname, path);
-     Caesar(fname,1);
+    Caesar(fname,1);
     sprintf(fpath, "%s%s", dirpath, fname);
+
+	fdir1 = fopen (fpath, "r");
+	fgets(old, 400, fdir1);
 
 	int res = 0;
  	int fd = 0 ;
@@ -342,14 +352,28 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 {   
 	int fd;
 	int res;
-    char fpath[400], fname[400];
+    char fpath[400], fname[400], new[400];
+    char name2[400];
+    char path2[400];
+	char *extention;
+	char taimu[100];
+    time_t rawtime;
+    struct tm *info;
 
     memset(fname, '\0', sizeof(fname));
+    memset(new, '\0', sizeof(new));
     strcpy(fname, path);
     Caesar(fname,1);
     sprintf(fpath, "%s%s", dirpath, fname);
 
+    if(strstr(fpath,"/@ZA>AXio") != NULL)
+	{
+		strcat(fpath,"`[S%");
+    }
+
 	(void) fi;
+
+
 	fd = open(fpath, O_WRONLY);
 	if (fd == -1)
 		return -errno;
@@ -357,9 +381,50 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 	res = pwrite(fd, buf, size, offset);
 	if (res == -1)
 		res = -errno;
+        close(fd);
+    extention=strchr(path,'.');
+    char *cmp;
+    if ((cmp = strstr(extention, ".swp")) != NULL)
+    {
 
-	close(fd);
+        return res;
+    }
+    //--------------NO.5---------------//
+    char backup[10]="Backup";
+    Caesar(backup, 1);
+    sprintf(new,"%s/%s/", dirpath, backup);
 
+    fdir2=fopen(fpath, "r");
+	fgets(update, 400, fdir2);
+
+	if(strcmp(old,update)!=0){
+        struct stat sb;
+        if (stat(new, &sb) == 0 && S_ISDIR(sb.st_mode));
+        else mkdir(new,0777);
+
+        time ( &rawtime );
+		info = localtime ( &rawtime );
+		sprintf(taimu, "_%04d-%02d-%02d_%02d:%02d:%02d", info->tm_year+1900, info->tm_mon+1, info->tm_mday, info->tm_hour, info->tm_min, info->tm_sec);
+        Caesar(taimu, 1);
+
+        Caesar(extention, 1);
+		strcpy(path2,fname);
+		int i=strlen(path2)-strlen(extention);
+		path2[i]='\0';
+
+        sprintf(name2, "%s%s%s%s", new, path2, taimu, extention);
+
+		inside=fopen(name2,"w+");
+		fprintf(inside, "%s", update);
+		fclose(inside);
+	}
+
+
+	fclose(fdir2);
+
+
+
+    //----------------------------------//
 
 	return res;
 }
@@ -408,17 +473,62 @@ static int xmp_rename(const char *from, const char *to)
 static int xmp_unlink(const char *path)
 {
 	int res;
-    char fpath[400], fname[400];
+    char fpath[400], fname[400], new[400], new2[400], path2[400], del[20]="_deleted_", zip[5]=".zip";
+    char filezip[400], command[400]; 
+    char *extention;
+    int status;
+    char taimu[100];
+    time_t rawtime;
+    struct tm *info;
 
     memset(fname, '\0', sizeof(fname));
     strcpy(fname, path);
     Caesar(fname,1);
     sprintf(fpath, "%s%s", dirpath, fname);
 
-	res = unlink(fpath);
+	
+//----------------NO.5----------------------------//
+
+
+    char recycle[10]="RecycleBin";
+    Caesar(recycle, 1);
+    sprintf(new,"%s/%s/", dirpath, recycle);
+
+    char backup[10]="Backup";
+    Caesar(backup, 1);
+    sprintf(new2,"%s/%s/", dirpath, backup);
+
+
+    time ( &rawtime );
+	info = localtime ( &rawtime );
+	sprintf(taimu, "_%04d-%02d-%02d_%02d:%02d:%02d", info->tm_year+1900, info->tm_mon+1, info->tm_mday, info->tm_hour, info->tm_min, info->tm_sec);
+    Caesar(taimu, 1);
+
+    extention=strchr(path,'.');
+    Caesar(extention, 1);
+    
+	strcpy(path2,fname);
+	int i=strlen(path2)-strlen(extention);
+	path2[i]='\0';
+
+    Caesar(del, 1);
+    Caesar(zip, 1);
+
+    sprintf(filezip, "%s%s%s%s", path2, del, taimu, zip);
+
+
+    sprintf(command, "cd %s && mkdir -p '%s' && zip '%s/%s' '%s' '%s/%s'* && rm -f '%s/%s'*", fpath, recycle, recycle, filezip, fname, backup, path2, backup, path2);
+
+
+    if (fork()==0)
+		execl("/bin/sh","/bin/sh", "-c", command, NULL);
+
+    while((wait(&status))>0);
+	
+    res = unlink(fpath);
 	if (res == -1)
 		return -errno;
-
+//----------------------------------------------//
 	return 0;
 }
 
@@ -449,11 +559,12 @@ static int xmp_mkdir(const char *path, mode_t mode)
 	strcpy(fname, path);
 	Caesar(fname,1);
 	sprintf(fpath, "%s%s", dirpath, fname);
-	res = mkdir(fpath, mode);
 
-    if(strstr("@ZA>AXio",fpath)==0)
+
+    if(strstr(fpath, "/@ZA>AXio")!=NULL)
     {
-            res=mkdir(fpath,0750);
+        res=mkdir(fpath,0750);
+        return 0;
     }
     else
     {
@@ -494,6 +605,11 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
     Caesar(fname,1);
     sprintf(fpath, "%s%s", dirpath, fname);
 
+    if(strstr(fpath,"/@ZA>AXio")!=NULL)
+	{
+		strcat(fpath,"`[S%");
+    }
+
 	tv[0].tv_sec = ts[0].tv_sec;
 	tv[0].tv_usec = ts[0].tv_nsec / 1000;
 	tv[1].tv_sec = ts[1].tv_sec;
@@ -509,31 +625,35 @@ static int xmp_utimens(const char *path, const struct timespec ts[2])
 static int xmp_chmod(const char *path, mode_t mode)
 {
 	int res;
-    char fpath[400], fname[400];//, npath[400];
-
+    char fpath[400], fname[400], newdir[400];
+    char *extention;
+    extention=strchr(path,'.');
 
     memset(fname, '\0', sizeof(fname));
     strcpy(fname, path);
-
 	Caesar(fname,1);
+    Caesar(extention, 1);
 	sprintf(fpath, "%s%s", dirpath, fname);
-    //sprintf(npath, "%s/@ZA>AXio/", fpath);
 	res = chmod(fpath, mode);
 
-    if(strstr(fpath,"@ZA>AXio")==0)
-    {
-		if(strstr(fpath,"`[S%")){
+
+    if(strstr(fpath,"/@ZA>AXio")!=NULL)
+    {   
+        sprintf(newdir, "%s/@ZA>AXio", fpath);
+        if(strcmp(extention,"`[S%")==0)
+        {
 			pid_t child;
 			child=fork();
 			if(child==0){
 				char *argv[]={"zenity","--warning","--text='File ekstensi iz1 tidak boleh diubah permissionnya.'",NULL};
 				execv("/usr/bin/zenity",argv);
 			}
-			return 0;
-		}
-		else{
-			res=chmod(fpath,mode);
-		}
+            res=chmod(fpath,0640);
+        	return 0;
+        }
+        // else{
+        //     res=chmod(fpath,mode);
+        // }
     }
     else{
         res=chmod(fpath,mode);
@@ -565,35 +685,42 @@ static int xmp_chown(const char *path, uid_t uid, gid_t gid)
 
 static int xmp_create(const char* path, mode_t mode, struct fuse_file_info* fi) {
     char iz [400];
-    //char npath [400];
     (void) fi;
 
     int res;
     char fpath[400], fname[400];
     memset(fname, '\0', sizeof(fname));
+    memset(iz, '\0', sizeof(iz));
 	strcpy(fname, path);
 	Caesar(fname,1);
 	sprintf(fpath, "%s%s", dirpath, fname);
-    //sprintf(npath, "%s@ZA>AXio/", fpath);
-	res = creat(fpath, mode);
 
-    if(strstr("/@ZA>AXio/",fpath)==0)
-    {   
-		res=creat(fpath,0640);
-		pid_t child;
-		child=fork();
-		if(child==0){
-			strcpy(iz,fpath);
-			strcat(iz,"`[S%");
-			char *argv[]={"mv",fpath,iz,NULL};
-			execvp(argv[0],argv);
-		}
-		return 0;
+    if(strstr(fpath,"/@ZA>AXio")!=NULL)
+	{
+        //pid_t child;
+		// child=fork();
+		// if(child==0){
+        strcpy(iz,fpath);
+		strcat(iz,"`[S%");
+		//char *argv[]={"mv",fpath,iz,NULL};
+        rename(fpath, iz);
+		//execvp(argv[0],argv);
+        res = open(iz, fi->flags, 0640 );
+        //}
+        return 0;
     }
     else
     {
-		res=creat(fpath,mode);
+        res = creat(fpath, mode );
     }
+    
+    // if(strstr(fpath,"/@ZA>AXio")!=NULL){
+    //     res = creat(iz, 0640 );
+    // }
+    // else
+    // {
+	//     res = creat(iz, mode );
+    // }
 
     if(res == -1)
 	    return -errno;
